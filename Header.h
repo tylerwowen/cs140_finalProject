@@ -3,11 +3,14 @@
 //  finalx
 //
 //  Created by Tyler Weimin Ouyang on 3/6/15.
-//  Copyright (c) 2015 Golden. All rights reserved.
+//  Copyright (c) 2015 Tyler Weimin Ouyang & Jenna Cryan. All rights reserved.
 //
 
 #ifndef finalx_Header_h
 #define finalx_Header_h
+
+#include "pbfs.h"
+#include "bag.h"
 
 struct graph { // A graph in compressed-adjacency-list (CSR) form
 	int nv;            // number of vertices

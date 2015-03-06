@@ -1,0 +1,173 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+	<html lang="en">
+<head>
+<title>CS140: Breadth-First Search</title>
+<link rel="stylesheet" type="text/css" href="default.css">
+</head>
+<body>
+
+
+<center>
+<h1>CS140 Final Project: Breadth-First Search (Cilk)</hl>
+</center>
+
+Breadth-first search is an algorithm for exploring the vertices
+and edges of a directed graph, beginning from a particular 
+"starting vertex".
+It's a simple sequential algorithm, but making it run well in
+parallel is challenging.
+The "Graph500 Benchmark", which measures what machines are
+fastest for graph problems, does a breadth-first search (BFS)
+on so-called RMAT graphs.
+For this project, you will implement BFS in Cilk and run it
+on the RMAT graphs.
+There are several directions you can explore:
+You can try out exotic data structures to represent the queue 
+in the BFS;
+you can package your BFS implementation into a full Graph500
+code (and then enter the Graph500 competition if you want!);
+you can try to tune your code to make efficient use of the
+caches on a Triton node.
+<p>
+<h2> Breadth-First Search </h2>
+<p>
+BFS explores the vertices and edges of a graph, beginning from
+a specified "starting vertex" that we'll call s.
+It assigns each vertex a "level" number, which is the smallest
+number of hops in the graph it takes to reach that vertex from s.
+BFS begins by assigning s itself level 0.
+It first visits all the "neighbors" of s, which are the vertices
+that can be reached from s by following one edge, and assigns
+them level 1.
+Then it visits the neighbors of the level-1 vertices: 
+some of those neighbors might already be on level 0 or 1, but any
+that haven't already been assigned a level get level 2.
+And so on -- the so-far-unreached neighbors of level-2 vertices
+get level 3, then 4, and so forth until there are no more unreached
+neighbors.
+<p>
+BFS uses FIFO queue to decide what vertices to visit next.
+The queue starts out with only s on it, with level[s]=0.
+Then the general step is to take the front vertex v from the queue
+and visit all its neighbors.  Any neighbor that hasn't yet been
+visited is added to the back of the queue and assigned a level
+one larger than level[v].
+<a href="demo-bfs.pdf">Here is an example of BFS</a>, 
+showing the contents of the queue and the level numbers at each step.
+There is a nice description of BFS in Cormen et al.'s textbook
+"Introduction to Algorithms", and also in 
+<a href="http://courses.csail.mit.edu/6.884/spring10/labs/lab4.pdf">this 
+handout from MIT</a>.
+<p>
+There is a sequential C implementation of BFS <a href="code">here</a>.
+Say "cat sample.txt | ./bfstest 1" to run the sequential code on the
+<a href="demo-bfs.pdf">sample graph</a>.
+You should notice several things about this code.
+<p>
+The FIFO queue data structure is just represented by an array with
+"front" and "back" pointers.
+This is the data structure you'll have to modify to parallelize the code.
+<p>
+In addition to the level numbers, the code computes a few other things.
+nlevels is one more than the largest level number of any 
+vertex reachable from s,
+and levelsize[i] is the number of vertices with level i.
+Also, for each vertex v, parent[v] is the vertex that caused v to
+be assigned a level; that is, parent[v] = w implies that there is 
+an edge (w,v) from w to v, and level[v] = level[w]+1.
+<p>
+The graph data structure uses what's called 
+"compressed sparse adjacency lists".
+This is a very compact structure that's almost exactly like the
+sparse matrix data structure described in class.
+There are just two arrays. 
+Array nbr[] lists all the neighbors 
+of vertex 0, followed by all the neighbors of vertex 1, then
+vertex 2, and so on; the number of entries in nbr[] is the
+number of edges in the graph.
+Array firstnbr[] gives the index in nbr[] of the first neighbor
+of each vertex.
+Thus, for example, the neighbors of vertex 5 are 
+nbr[firstnbr[5]],
+nbr[firstnbr[5]+1],
+nbr[firstnbr[5]+2],
+...,
+nbr[firstnbr[6]-1].
+If the graph has n vertices, the firstnbr[] array has n+1 elements;
+firstnbr[n-1] is the index in nbr[] of the first neighbor of the last
+vertex,
+and firstnbr[n]-1 is the index in nbr[] of the last neighbor of the
+last vertex.
+Therefore, firstnbr[n] is equal to the total number of edges in the graph.
+This data structure is not very flexible for a dynamic graph -- it's 
+hard to add or delete an edge or a vertex -- but it's quite good for a
+graph that doesn't change, because it's easy to write a very efficient
+loop over the all the neighbors of a given vertex.
+<p>
+<h2> Parallel Breadth-First Search </h2>
+<p>
+The idea of doing BFS in parallel is that, in principal, you can
+process all the vertices on a single level at the same time.
+That is, once you've found all the level-1 vertices, you can
+do a parallel loop that explores from each of them to find
+level-2 vertices.
+Thus, the parallel code will have an important sequential 
+loop over levels, starting at 0.
+<p>
+In the parallel code, it's possible that when you're processing
+level i, two vertices v and w will both find the same level-i+1
+vertex x as a neighbor.
+This will cause a data race when they both try to set level[x]=i+1,
+and also when they each try to set parent[x] to themselves.
+But if you're careful this is a "benign data race" -- it doesn't
+actually cause any problem, because there's no disagreement about
+what level[x] should be, and it doesn't matter in the end whether
+parent[x] turns out to be v or w.
+<p>
+A more difficult problem is that all of the threads exploring
+level-i vertices will be trying to add new level-i+1 vertices
+to the back of the FIFO queue at the same time.
+How you resolve this is the main algorithmic question about the
+parallel implementation.
+There are several possibilities, which we'll leave to your
+creative imagination.  
+One good solution is described in
+<a href="http://courses.csail.mit.edu/6.884/spring10/labs/lab4.pdf">the
+MIT handout</a> and also in 
+<a href="http://portal.acm.org/citation.cfm?id=1810534">this paper</a>.
+<p>
+<h2> The RMAT Graphs </h2>
+<p>
+You should debug your code using small example graphs that you
+make up by hand.  However, for big runs, you'll use the RMAT
+graphs that are defined in the Graph500 specification.
+RMAT is a method that generates so-called "power-law" graphs 
+of arbitrarily large size.
+The <a href="http://graph500.org">Graph500 website</a>
+has a sequential Matlab code and a sequential C code to generate
+RMAT graphs.
+<p>
+<h2> The Graph500 Benchmark </h2>
+<p>
+The Graph500 Benchmark is described 
+<a href="http://graph500.org/Specifications.html">here</a>.
+The benchmark first generates the list of edges for an RMAT graph,
+then converts the edges list into a graph data structure 
+like compressed sparse adjancency lists, 
+then chooses several vertices at random and does
+a BFS from each one, then verifies that the parent[] trees have
+been computed correctly.
+(The benchmark spec allows you to use a parallel code for each 
+individual BFS, but does not allow you to run all the BFS's from 
+different starting vertices in parallel.)
+Making a full Graph500 code is a bit of work -- in addition to the
+BFS kernel (which is the main point), you also have to link in the
+graph generator and verifier and so forth.
+You can choose where you want to focus your time on this project,
+so you don't need to do the full Graph500 implementation unless 
+you want to.
+But it would be pretty cool to get an implementation that could
+get into the ballpark of the top 9 machines/codes listed on the
+Graph500 web site.
+</body>
+</html>

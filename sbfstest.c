@@ -1,5 +1,5 @@
 // BFSTEST : Test breadth-first search in a graph.
-// 
+//
 // example: cat sample.txt | ./bfstest 1
 //
 // John R. Gilbert, 17 Feb 2011
@@ -90,7 +90,7 @@ void print_CSR_graph (graph *G) {
 }
 
 
-void bfs (int s, graph *G, int **levelp, int *nlevelsp, 
+void bfs (int s, graph *G, int **levelp, int *nlevelsp,
          int **levelsizep, int **parentp) {
   int *level, *levelsize, *parent;
   int thislevel;

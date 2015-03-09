@@ -10,6 +10,18 @@
 #define finalx_bag_h
 
 #include "Header.h"
-
+class Bag {
+private:
+	Pennant **backbone;
+	unsigned long numNodes;
+public:
+	Bag();
+	Bag(int n);
+	~Bag();
+	void insert(Pennant* pen);
+	void merge(Bag* bag2);
+	Bag* split();
+	unsigned long getNumNodes();
+};
 
 #endif

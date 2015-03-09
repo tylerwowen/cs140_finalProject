@@ -27,16 +27,28 @@ Pennant::~Pennant(){
 // Merge pen2 into this
 void Pennant::merge(Pennant* pen2){
 	pen2->root_->right_ = root_->left_;
-	root_->left_; = pen2->root_;
+	root_->left_ = pen2->root_;
 	size_+=pen2->size_;
+}
+
+// Merge pen2 into this and return this
+Pennant* Pennant::merge2(Pennant* pen2){
+	pen2->root_->right_ = root_->left_;
+	root_->left_ = pen2->root_;
+	size_+=pen2->size_;
+	return this;
 }
 
 Pennant* Pennant::split() {
 	Pennant* newBag = new Pennant();
 	newBag->root_ = root_->left_;
-	root_->left = newBag->root_->right;
-	newBag->root_->right = NULL;
+	root_->left_ = newBag->root_->right_;
+	newBag->root_->right_ = NULL;
 	newBag->size_ = size_/2;
 	size_ = size_/2;
 	return newBag;
+}
+
+unsigned long Pennant::getSize(){
+	return size_;
 }

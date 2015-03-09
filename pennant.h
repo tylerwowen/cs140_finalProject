@@ -6,9 +6,10 @@
 //  Copyright (c) 2015 Tyler Weimin Ouyang & Jenna Cryan. All rights reserved.
 //
 
-#ifndef finalx_pennant_h
-#define finalx_pennant_h
+#ifndef __finalx__pennant__
+#define __finalx__pennant__
 
+#include <stdio.h>
 #include "Header.h"
 
 class Pennant {
@@ -17,10 +18,13 @@ private:
 	unsigned long size_;
 public:
 	Pennant();
-	pennant(Node* node);
+	Pennant(Node* node);
 	~Pennant();
 	void merge(Pennant* pen2); // Pennant-Union
+	Pennant* merge2(Pennant* pen2);
 	Pennant* split();
+	unsigned long getSize();
 };
 
-#endif
+
+#endif /* defined(__finalx__pennant__) */

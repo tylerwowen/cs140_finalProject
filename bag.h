@@ -9,7 +9,9 @@
 #ifndef finalx_bag_h
 #define finalx_bag_h
 
-#include "Header.h"
+#include "bag.h"
+#include "pennant.h"
+
 class Bag {
 private:
 	Pennant **backbone;
@@ -23,5 +25,7 @@ public:
 	Bag* split();
 	unsigned long getNumNodes();
 };
+
+void FA(Pennant *x, Pennant *y, Pennant *z);
 
 #endif

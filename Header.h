@@ -9,10 +9,6 @@
 #ifndef finalx_Header_h
 #define finalx_Header_h
 
-#include "pbfs.h"
-#include "bag.h"
-#include "pennant.h"
-
 struct graph { // A graph in compressed-adjacency-list (CSR) form
 	int nv;            // number of vertices
 	int ne;            // number of edges

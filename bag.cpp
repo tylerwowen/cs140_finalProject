@@ -7,18 +7,20 @@
 //
 
 #include "bag.h"
-#define BAGSIZE
+#define BAGSIZE 32
+
+
 Bag::Bag() {
 	backbone = new Pennant*[BAGSIZE];
 	numNodes = 0;
 }
 
-Bag::Bag() {
+Bag::~Bag() {
 	delete[] backbone;
 }
 
 Bag::Bag(int n) {
-	backbone = new pennant* [n];
+	backbone = new Pennant* [n];
 	for(int i = 0; i < n; i++) {
 		backbone[i] = NULL;
 	}
@@ -26,7 +28,7 @@ Bag::Bag(int n) {
 
 void Bag::insert(Pennant* x) {
 	int i = 0;
-	while(i < BAGSIZE && backbone[i] != NULL;) {
+	while(i < BAGSIZE && backbone[i] != NULL) {
 		x->merge(backbone[i]);
 		backbone[i++] = NULL;
 	}
@@ -53,11 +55,12 @@ Bag* Bag::split() {
 			bag2->backbone[i-1] = backbone[i]->split();
 			backbone[i-1] = backbone[i];
 			backbone[i] = NULL;
-			bag2->numNodes+= bag2->backbone[i-1]->size_;
-			numNodes-= bag2->backbone[i-1]->size_;
+			bag2->numNodes+= bag2->backbone[i-1]->getSize();
+			numNodes-= bag2->backbone[i-1]->getSize();
 		}
 	}
-	y != NULL ? insert(y) : y = NULL;
+	if (y!= NULL) insert(y);
+	return bag2;
 }
 
 unsigned long Bag::getNumNodes() {
@@ -75,20 +78,20 @@ void FA(Pennant *x, Pennant *y, Pennant *z) {
 		return;
 	}
 	else if(z == NULL) {
+		z = x->merge2(y);
 		x = NULL;
-		z = x->merge(y);
 	}
 	else if(y == NULL) {
+		z = x->merge2(z);
 		x = NULL;
-		z = x->merge(z);
 	}
 	else if(x == NULL) {
+		z = y->merge2(z);
 		x = NULL;
-		z = y->merge(z);
 	}
 	else {
+		z = y->merge2(z);
 		x = x;
-		z = y->merge(z);
 	}
 }
 

@@ -45,6 +45,7 @@ graph * graph_from_edge_list (int *tail, int* head, int nedges) {
 	G->nv = maxv+1;
 	G->nbr = (int *) calloc(G->ne, sizeof(int));
 	G->firstnbr = (int *) calloc(G->nv+1, sizeof(int));
+	G->dist = (unsigned int *) calloc(G->nv+1, sizeof(unsigned int));
 
 	// count neighbors of vertex v in firstnbr[v+1],
 	for (e = 0; e < G->ne; e++) G->firstnbr[tail[e]+1]++;
@@ -52,6 +53,9 @@ graph * graph_from_edge_list (int *tail, int* head, int nedges) {
 	// cumulative sum of neighbors gives firstnbr[] values
 	for (v = 0; v < G->nv; v++) G->firstnbr[v+1] += G->firstnbr[v];
 
+	// initialize dist with unsigned 0-1
+	for (v = 0; v < G->nv; v++) G->dist[v+1]--;
+	
 	// pass through edges, slotting each one into the CSR structure
 	for (e = 0; e < G->ne; e++) {
 		i = G->firstnbr[tail[e]]++;

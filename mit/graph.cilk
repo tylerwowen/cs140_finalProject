@@ -1,0 +1,231 @@
+// 6.884 Lab 4
+//
+// Graph Representation and PBFS implementations
+// Copyright (c) 2010 TB Schardl, Jim Sukha
+//
+//
+/*
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use, copy,
+ * modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+#ifndef GRAPH_CILK
+#define GRAPH_CILK
+
+#include <assert.h>
+#include <sys/types.h>
+#include <vector>
+
+#include <cilk.h>
+
+#include "graph.h"
+
+
+#define GraphDebug 0
+
+// Constructor for Graph
+Graph::Graph(int *ir, int *jc, int m, int n, int nnz)
+{
+  this->nNodes = m;
+  this->nEdges = nnz;
+
+  this->nodes = new int[m+1];
+  this->edges = new int[nnz];
+
+  int *w = new int[m];
+  for (int i = 0; i < m; ++i) {
+    w[i] = 0;
+  }
+
+  for (int i = 0; i < jc[n]; ++i)
+    w[ir[i]]++;
+
+  int prev;
+  int tempnz = 0;
+  for (int i = 0; i < m; ++i) {
+    prev = w[i];
+    w[i] = tempnz;
+    tempnz += prev;
+  }
+  this->nodes[m] = tempnz;
+
+  for (int i = 0; i < m; ++i)
+    this->nodes[i] = w[i];
+ 
+  for (int i = 0; i < n; ++i) {
+    for (int j = jc[i]; j < jc[i+1]; j++)
+      this->edges[w[ir[j]]++] = i;
+  }
+
+  delete[] w;
+}
+
+Graph::~Graph()
+{
+  delete[] this->nodes;
+  delete[] this->edges;
+}
+
+
+// The Serial BFS method using a FIFO queue.
+int
+Graph::bfs_serial(const int s, unsigned int *distances)
+{
+  unsigned int *queue = new unsigned int[nNodes];
+  unsigned int head, tail;
+  unsigned int current, newdist;
+
+  if (s < 0 || s > (int)nNodes)
+    return -1;
+
+  for (unsigned int i = 0; i < nNodes; i++) {
+    distances[i] = D_INFINITY;
+  }
+
+  current = s;
+  distances[s] = 0;
+  head = 0;
+  tail = 0;
+  do {
+    newdist = distances[current]+1;
+    for (int i = nodes[current]; i < nodes[current+1]; i++) {
+      if (newdist < distances[edges[i]])
+	queue[tail++] = edges[i];
+
+      distances[edges[i]] = newdist < distances[edges[i]] ?
+        newdist : distances[edges[i]];
+    }
+    current = queue[head++];
+  } while (head <= tail);
+  delete[] queue;
+
+  return 0;
+}
+
+
+/**********************************************************/
+// TODO: Complete the serial BFS implementation 
+// which uses two queues instead of a single FIFO queue.
+
+int
+Graph::bfs_2queue(const int s, unsigned int *distances)
+{
+  // TODO: Fill me in
+  fprintf(stderr, "TODO: implement bfs_2queue\nRunning bfs_serial\n");
+  return bfs_serial(s, distances);
+}
+
+#define NEIGHBOR_CHUNK 64
+
+/**********************************************************/
+// TODO: Currently, the breadth-first search uses
+// a bag implementation which is a linked list.
+// Splitting this and executing in parallel does not
+// work well.
+//
+// Implement a bag data structure and use this data
+// structure for BFS.
+
+
+// A BFS implementation that uses a linked-list bag implementation.
+// TODO: Fill in this method.
+//
+// You will probably want to create some helper functions for
+// traversing the bag.  These helper methods may be
+// implemented in a sufficiently generic way to work with several bag
+// implementations.  To allow your method to be useful across bag
+// implementations, you can use a template method.  You can declare a
+// template method as follows:
+//
+// template <BagType BType>
+// static int bfs_walk_layer(<arguments>) { ... }
+//
+// You can then call this method with a specific type of bag using the
+// following syntax:
+//
+// bfs_walk_layer<BAG_LIST>(<arguments>);
+//
+// To declare types inside templated functions, you may sometimes
+// need the "typename" prefix.  For example, if 
+//  b is an object of type Bag<int, BType>, then its 
+// BaseIterator you can say, 
+// 
+//   typename Bag<int, BType>::BaseIterator it = b->begin();
+//
+// NOTE: Cilk++ has a maximum nesting depth for spawn statements 
+// which is much smaller than for C++. You should avoid overflowing 
+// the Cilk++ stack.
+
+int
+Graph::bfs_bag_list(const int s, unsigned int *distances)
+{
+  // TODO: Fill me in
+  fprintf(stderr, "TODO: implement bfs_bag_list\nRunning bfs_serial\n");
+  return bfs_serial(s, distances);
+}
+
+
+/**********************************************************/
+// TODO: Implement your own bag data structure and use it for a
+// parallel BFS implementation.
+
+int
+Graph::bfs_parallel(const int s, unsigned int *distances)
+{
+  // TODO: Fill me in
+  fprintf(stderr, "TODO: implement bfs_parallel\nRunning bfs_serial\n");
+  return bfs_serial(s, distances);
+}
+
+/**********************************************************/
+// TODO: Optimize your implementation of bags and 
+// parallel breadth-first search.
+
+int
+Graph::bfs_parallel_opt(const int s, unsigned int *distances)
+{
+  // TODO: Fill me in
+  fprintf(stderr, "TODO: implement bfs_parallel_opt\nRunning bfs_serial\n");
+  return bfs_serial(s, distances);
+}
+
+/**********************************************************/
+// TODO: Check for problems with memory bandwidth.
+// 
+//
+// Here's a method you can call a bunch of times to increase
+// computational intensity.  Each call will add a single trivial
+// function call to your exection.
+//
+// We link in this method at compile time, to prevent the compiler
+// from optimizing it away.
+//
+extern "C" void trivial(void);
+
+int
+Graph::bfs_memtest(const int s, unsigned int *distances, int extra_calls)
+{
+  // TODO: Fill me in
+  fprintf(stderr, "TODO: implement bfs_memtest\nRunning bfs_serial\n");
+  return bfs_serial(s, distances);
+}
+
+
+#endif

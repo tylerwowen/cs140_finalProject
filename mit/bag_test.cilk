@@ -1,0 +1,350 @@
+// 6.884 Lab 4
+// 
+// Source file for a linked-list implementation of a bag.
+// Copyright (c) 2010 TB Schardl and Jim Sukha
+//
+/*
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use, copy,
+ * modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+#include <stdio.h>
+#include <set>
+#include <vector>
+
+#include "bag.h"
+#include <cilk.h>
+
+#define DEBUG 0
+
+// Nondestructively looks at the bag, and checks that
+// "mset" contains exactly the elements in the bag.
+// For this test case to work, copy_to_vector() of your
+// bag implementation must be implemented.
+template <BagType BType>
+void
+verify_contents(Bag<int, BType>* bag, const std::multiset<int>* mset)
+{
+  std::multiset<int> mset_copy = std::multiset<int>(*mset);
+  assert(mset->size() == mset_copy.size());
+
+  // Create a copy of the elements in the bag as a vector.
+  std::vector<int>* vec = bag->copy_to_vector();
+
+  if (vec->size() != mset->size()) {
+    printf("ERROR: vec has size %ld, mset has size %ld\n",
+	   (long)vec->size(),
+	   (long)mset->size());
+    assert(0);
+  }
+  assert(vec->size() == mset->size());
+
+  size_t num_removed = 0;
+  for (std::vector<int>::iterator it = vec->begin();
+       it != vec->end();
+       ++it) {
+
+    int val = *it;
+
+    std::multiset<int>::iterator m_it;
+    //    printf("Value %d\n", val);
+    m_it = mset_copy.find(val);
+    if (m_it == mset_copy.end()) {
+      printf("ERROR: did not find value %d\n", val);
+      assert(0);
+    }
+    else {
+      mset_copy.erase(m_it);
+      num_removed++;
+    }
+  }
+
+  assert(num_removed == vec->size());
+  assert(mset_copy.empty());
+  delete vec;
+}
+
+// Tests n inserts into the bag.
+template <BagType BType>
+void bag_insert_test(int n){
+  printf("bag_test_insert(%d elements): ", n);
+  std::multiset<int> mset;  
+  for (int i = 0; i < n; ++i) {
+    mset.insert(i);
+  }
+
+  Bag<int, BType> *a = new Bag<int, BType>();
+  for (std::multiset<int>::iterator iter = mset.begin();
+       iter != mset.end();) {
+    a->insert(*iter);
+    iter++;
+  }  
+  verify_contents(a, &mset);
+  printf("PASSED\n");
+}
+
+
+
+template <BagType BType>
+void bag_test_misc(void) {
+
+  printf("bag_test_misc():  ");
+  std::multiset<int> mset;
+  for (int i=0; i < 1048575; ++i)
+    mset.insert(i);
+  
+  Bag<int, BType> *a = new Bag<int, BType>();
+  Bag<int, BType> *b = new Bag<int, BType>();
+  for (std::multiset<int>::iterator iter = mset.begin();
+       iter != mset.end();) {
+    a->insert(*iter);
+    iter++;
+    if (iter == mset.end())
+      break;
+    b->insert(*iter);
+    iter++;
+  }
+  
+  a->merge(b);
+  delete b;
+
+  // Verify contents of a
+  verify_contents(a, &mset);
+
+  Bag<int, BType> *c, *d, *e, *f, *g, *h, *i, *j, *k, *l, *m, *n, *o, *p;
+
+  // 16-way split
+  b = a->split();
+  c = a->split();
+  d = b->split();
+  e = a->split();
+  f = b->split();
+  g = c->split();
+  h = d->split();
+  i = a->split();
+  j = b->split();
+  k = c->split();
+  l = d->split();
+  m = e->split();
+  n = f->split();
+  o = g->split();
+  p = h->split();
+
+  // Merge everything
+  a->merge(b);
+  delete b;
+  c->merge(d);
+  delete d;
+  e->merge(f);
+  delete f;
+  g->merge(h);
+  delete h;
+  i->merge(j);
+  delete j;
+  k->merge(l);
+  delete l;
+  m->merge(n);
+  delete n;
+  o->merge(p);
+  delete p;
+  a->merge(o);
+  delete o;
+  c->merge(m);
+  delete m;
+  e->merge(k);
+  delete k;
+  g->merge(i);
+  delete i;
+  e->merge(a);
+  delete a;
+  g->merge(c);
+  delete c;
+  g->merge(e);
+
+  // Verify all elements of multiset are in Bag g
+  verify_contents(g, &mset);
+  printf("PASSED\n");
+}
+
+
+
+template <BagType BType>
+void
+recursive_traversal_helper(Bag<int, BType>* bag, std::multiset<int>* mset) {
+  
+  std::multiset<int> mset_temp;
+  if (bag->can_split()) {
+
+    Bag<int, BType>* half;
+    half = bag->split();
+
+    if (DEBUG) {
+      printf("HERE: after split. bag has %d elem, half has %d elem\n",
+	     bag->num_elements(),
+	     half->num_elements());
+    }
+
+    recursive_traversal_helper<BType>(bag, &mset_temp);
+    recursive_traversal_helper<BType>(half, &mset_temp);
+    
+    // Merge the half back into the original bag.
+
+    if (DEBUG) {
+      printf("HERE: after split. bag has %d elem, half has %d elem\n",
+	     bag->num_elements(),
+	     half->num_elements());
+    }
+    
+    bag->merge(half);
+
+    if (DEBUG) {
+      printf("HERE: after merge. bag has %d elem, half has %d elem\n",
+	     bag->num_elements(),
+	     half->num_elements());
+    }
+
+    delete half;
+
+    // Make sure that we have the same contents.
+    verify_contents(bag, &mset_temp);
+  }
+  else {
+    // Base case. In the base case, an indivisible bag
+    // can be traversed via its iterator.
+
+    //    printf("In base case here. bag = %p \n", bag);
+//     int num_added = 0;
+//     for (int i = 0; i < bag->get_num_base_elements(); ++i) {
+//       mset_temp.insert(bag->get_base_elements()[i]);
+//       ++num_added;
+//     }
+    int num_added = 0;
+    typename Bag<int, BType>::BaseIterator it = bag->begin();
+    while (it != bag->end()) {
+      int val = bag->dereference(&it);
+      mset_temp.insert(val);
+      num_added++;
+      bag->advance(&it);
+    }
+  }
+  
+  // Merge the temporary multiset into the original one.
+  for (std::multiset<int>::iterator it = mset_temp.begin();
+       it != mset_temp.end();
+       ++it) {
+    mset->insert(*it);
+  }
+}
+
+// Recursively traverses the bag data structure.
+// (This traversal is destructive, in that bags are destructively split,
+// new bags are created, and merged back together.)
+// Thus, the bag may take occupy different memory locations than it
+// did before.
+// 
+// This test requires that merge and split work properly. 
+
+template <BagType BType>
+void recursive_traversal_test(int n, bool rand_elements) {
+  printf("recursive_traversal_test(%d elements, %s):  ",
+	 n,
+	 rand_elements ? "random" : "fixed");
+  std::multiset<int> mset;  
+  Bag<int, BType> *bag = new Bag<int, BType>();
+  
+  for (int i = 0; i < n; ++i) {
+    int val;
+    val = (rand_elements ? rand() : i);
+    mset.insert(val);
+    bag->insert(val);    
+  }
+
+  // Copy the original multiset.
+  std::multiset<int> mset_copy;
+
+  recursive_traversal_helper<BType>(bag, &mset_copy); 
+
+  // After we fill up mset_copy, we should have the same number of
+  // elements.
+  assert(mset.size() == mset_copy.size());
+
+  // Make sure we still have the same elements.
+  verify_contents(bag, &mset);
+  
+  // Make sure the original set and the copy set have the same
+  // contents.
+  for (std::multiset<int>::iterator copy_it = mset_copy.begin();
+       copy_it != mset_copy.end();
+       ++copy_it) {
+    size_t count = mset.count(*copy_it);
+    size_t orig_count = mset_copy.count(*copy_it);
+
+    if (count != orig_count) {
+      printf("ERROR: val = %d, count is %zd, orig_count = %zd\n",
+	     *copy_it,
+	     count, orig_count);
+    }
+    assert(count == orig_count);
+  }
+  delete bag;
+  printf("PASSED\n");
+}
+
+
+
+template <BagType BType>
+void run_bag_tests(void) {
+  bag_insert_test<BType>(10);
+
+  recursive_traversal_test<BType>(10, false);
+  recursive_traversal_test<BType>(10, true);
+  bag_insert_test<BType>(1000);
+  recursive_traversal_test<BType>(1000, false);
+
+  bag_insert_test<BType>(1024);
+  recursive_traversal_test<BType>(1024, true);
+
+  bag_insert_test<BType>(10000);
+  recursive_traversal_test<BType>(10000, false);  
+  recursive_traversal_test<BType>(10000, true);  
+
+  bag_test_misc<BType>();
+}
+
+int
+cilk_main()
+{
+  printf("Running tests for BAG_LIST\n");
+  run_bag_tests<BAG_LIST>();
+  
+  // TODO: Implement a bag, and test it
+  printf("BAG_PARALLEL unimplemented\n");
+  //printf("Running tests for BAG_PARALLEL\n");
+  //run_bag_tests<BAG_PARALLEL>();
+
+  // TODO: Optimize your bag implementation and
+  // run test cases.  
+  printf("BAG_OPT unimplemented\n");
+  //printf("Running tests for BAG_OPT\n");
+  //run_bag_tests<BAG_OPT>();
+  
+  return 0;
+}
+

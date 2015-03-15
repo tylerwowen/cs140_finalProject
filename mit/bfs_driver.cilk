@@ -1,0 +1,486 @@
+// 6.884 Lab 4
+//
+// BFS Driver code
+// Copyright (c) 2010 TB Schardl, Jim Sukha
+//
+//
+/*
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use, copy,
+ * modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+#include <climits>
+#include <cstdio>
+#include <cstdlib>
+#include <string>
+#include <sys/types.h>
+#include <sys/time.h>
+
+#include <cilk.h>
+#include <cilkview.h>
+
+#include "graph.cilk"
+
+
+using namespace std;
+cilk::cilkview cv;
+
+
+// The types of BFS:
+const int BFS_TYPES = 6;
+typedef enum { BFS_SERIAL = 1,
+	       BFS_TWO_QUEUES = 2,
+	       BFS_BAG_LIST = 3,
+	       BFS_PARALLEL = 4,
+	       BFS_PAR_OPT = 5,
+	       BFS_MEMTEST = 6 } BFSType;
+
+const char* BFSTypeNames[BFS_TYPES+1] = {
+  "INVALID",
+  "Serial",
+  "TwoQueue",
+  "BagList",
+  "Parallel",
+  "ParOpt",
+  "MemTest"
+};
+
+const char* BFSTypeToName(BFSType typ) {
+  assert(typ >= 0);
+  assert(typ <= BFS_TYPES);
+  return BFSTypeNames[typ];
+}
+
+const BFSType DEFAULT_BFS_TYPE = BFS_SERIAL;
+const bool DEFAULT_VERBOSE = false;
+const bool DEFAULT_CHECK = true;
+
+
+typedef struct {
+  string inputname;
+  BFSType bfs_sel;
+  bool check;
+  int extra_calls;
+  int CurrentP;
+  bool verbose;
+} SimArgs;
+
+
+SimArgs parse_arguments(int argc, char* argv[]) {
+  SimArgs theArgs;
+  theArgs.inputname = "";
+  theArgs.bfs_sel = DEFAULT_BFS_TYPE;
+  theArgs.check = DEFAULT_CHECK;
+  theArgs.extra_calls = 0;
+  theArgs.CurrentP = cilk::current_worker_count();
+  theArgs.verbose = DEFAULT_VERBOSE;
+  bool found_inputname = false;
+  bool found_bfs_sel = false;
+  bool found_extra_calls = false;
+
+  if (argc < 2 || argc > 6) {
+    fprintf(stderr, "Usage: %s inputname [bfs_selection] [extra_calls] [--check] [--verbose] \nbfs_selection:\t1 -> BFS_SERIAL (default)\n\t\t2 -> BFS_TWO_QUEUES\n\t\t3 -> BFS_BAG_LIST\n\t\t4 -> BFS_PARALLEL\n\t\t5 -> BFS_PAR_OPT\n\t\t6 -> BFS_MEMTEST\n",
+             argv[0]);
+    exit(1);
+  }
+  else {
+    for (int arg_i = 1; arg_i < argc; ++arg_i) {
+      char *arg = argv[arg_i];
+
+      if (std::strcmp(arg, "--check") == 0) {
+	theArgs.check = true;
+      }
+      else if (std::strcmp(arg, "--no_check") == 0) {
+	theArgs.check = false;
+      }
+      else if ((std::strcmp(arg, "--verbose") == 0) ||
+	       (std::strcmp(arg, "-v") == 0)) {
+	theArgs.verbose = true;
+      }
+      else if ((std::strcmp(arg, "--quiet") == 0) ||
+	       (std::strcmp(arg, "-q") == 0)) {
+	theArgs.verbose = false;
+      }
+      else if (('0'<= arg[0]) && (arg[0]<='9')) {
+	char *end;
+	int V = strtoul(arg, &end, 10);
+	// Check for errors in parsing numbers.
+	if (errno != 0) {
+	  int r = errno;
+	  fprintf(stderr, "Error %s (errno = %d) trying to parse %s as a number\n",
+		  strerror(r),
+		  r,
+		  arg);
+	  abort();
+	}
+	if (*end != 0) {
+	  fprintf(stderr, "Error parsing %s as a number (junk at end)\n",
+		  arg);
+	  abort();
+	}
+	
+	// We look for two integers in order:
+	//  bfs_sel, extra_calls
+	//
+	if (!found_bfs_sel) {
+	  theArgs.bfs_sel = (BFSType)V;
+	  found_bfs_sel = true;
+	}
+	else if (!found_extra_calls) {
+	  theArgs.extra_calls = V;
+	  found_extra_calls = true;
+	}
+	else {
+	  fprintf(stderr, "Found extra integer argument %d\n", V);
+	  abort();
+	}
+      }
+      else if (!found_inputname) {
+	theArgs.inputname = arg;
+	found_inputname = true;
+      }
+      else {
+	fprintf(stderr, "ERROR: extra argument %s\n",
+		arg);
+	abort();
+      }
+    }
+    
+    if (theArgs.verbose) {
+      printf("Running on %d workers\n", theArgs.CurrentP);
+      printf("Arguments: bfs_sel = %d, inputname = %s, extra_calls = %d, check == %d\n",
+	     theArgs.bfs_sel,
+	     theArgs.inputname.c_str(),
+	     theArgs.extra_calls,
+	     theArgs.check);      
+    }
+  }
+  assert(found_inputname);
+  return theArgs;
+}
+
+// Read processor's timestamp counter.
+static inline unsigned long long rdtsc() {
+    unsigned long long r;
+    __asm__ __volatile__ ("rdtsc\n"
+                          "shl $32,%%rdx\n"
+                          "or %%rdx,%%rax\n"
+			  "movq %%rax,%0" : "=r"(r) : : "edx", "eax", "rdx", "rax");
+    return r;
+}
+
+unsigned long long todval (struct timeval *tp) {
+    return tp->tv_sec * 1000 * 1000 + tp->tv_usec;
+}
+
+#define debug 0
+
+#ifndef DEBUG
+#define DEBUG 0
+#endif
+
+// Stuff for purging the cache
+#define CACHE_CLEANER_SIZE 8*1048576
+
+volatile char cache_cleaner[CACHE_CLEANER_SIZE];
+
+void
+purge_cache()
+{
+  //fprintf(stderr, "Purging cache\n");
+  for (int i = 0; i < CACHE_CLEANER_SIZE; i++)
+    cache_cleaner[i]++;
+}
+
+static int
+CumulativeSum(int* arr, int size)
+{
+  int prev;
+  int tempnz = 0;
+  for (int i = 0; i < size; ++i) {
+    prev = arr[i];
+    arr[i] = tempnz;
+    tempnz += prev;
+  }
+  return tempnz;
+}
+
+// Compares the two distance arrays and returns
+// # of elements which are different.
+static int check_distances(unsigned int distances[],
+			   unsigned int distverf[],
+			   int nodes)
+{
+  const int ERROR_DISP_THRESHHOLD = 25;
+  int num_errors = 0;
+  for (int i = 0; i < nodes; i++) {
+    if (distances[i] != distverf[i]) {
+
+      if (num_errors < ERROR_DISP_THRESHHOLD) {
+	printf("distances[%d] = %d; distverf[%d] = %d\n", i, distances[i], i, distverf[i]);
+      }
+      else {
+	if (num_errors == ERROR_DISP_THRESHHOLD) {
+	  printf("At least %d errors found... not reporting additional errors\n", num_errors);
+	}
+      }
+      num_errors++;
+    }
+  }
+  return num_errors;
+}
+
+
+Graph* parse_graph(string filename) {
+
+  Graph* g = NULL;
+  unsigned int m, n, nnz;
+
+  // Read binary CSB matrix input
+  // Code and matrices adapted from oskitest.cpp by Aydin Buluc
+  if (debug)
+    printf("Reading input file %s\n", filename.c_str());
+  
+  FILE *f = fopen(filename.c_str(), "r");
+  if (!f) {
+    fprintf(stderr, "Problem reading binary input file %s\n", filename.c_str());
+    return NULL;
+  }
+
+  fread(&m, sizeof(unsigned int), 1, f);
+  fread(&n, sizeof(unsigned int), 1, f);
+  fread(&nnz, sizeof(unsigned int), 1, f);
+  
+  if (m <= 0 || n <= 0 || nnz <= 0) {
+    fprintf(stderr,
+            "Problem with matrix size in binary input file\n");
+    return NULL;
+  }
+
+  if (m != n) {
+    fprintf(stderr,
+            "Input file does not describe a graph\n");
+    return NULL;
+  }
+
+  if (debug)
+    printf("Reading %d-by-%d matrix having %d nonzeros\n",
+           m, n, nnz);
+
+  int *rowindices = new int[nnz];
+  int *colindices = new int[nnz];
+  double *vals = new double[nnz];
+
+  size_t rows = fread(rowindices, sizeof(int), nnz, f);
+  size_t cols = fread(colindices, sizeof(int), nnz, f);
+  size_t nums = fread(vals, sizeof(double), nnz, f);
+  fclose(f);
+
+  if (rows != nnz || cols != nnz || nums != nnz) {
+    fprintf(stderr, "Problem with FREAD. Aborting.\n");
+    return NULL;
+  }
+  //Csc<double, int> csc(rowindices, colindices, vals, nnz, m, n);
+  double *num = new double[nnz];
+  int *ir = new int[nnz];
+  int *jc = new int[n+1];
+  int *w = new int[n];
+
+  for (unsigned int k = 0; k < n; ++k)
+    w[k] = 0;
+
+  for (unsigned int k = 0; k < nnz; ++k)
+    w[colindices[k]]++;
+
+  jc[n] = CumulativeSum(w,n);
+  for (unsigned int k = 0; k < n; ++k)
+    jc[k] = w[k];
+
+  int last;
+  for (unsigned int k = 0; k < nnz; ++k) {
+    ir[last = w[colindices[k]]++] = rowindices[k];
+    num[last] = vals[k];
+  }
+
+  delete[] w;
+  delete[] rowindices;
+  delete[] colindices;
+  delete[] vals;
+
+  if (debug)
+    printf("Making graph\n");
+  // Make graph
+
+  g = new Graph(ir, jc, m, n, nnz);
+
+  delete[] ir;
+  delete[] jc;
+  delete[] num;
+
+  return g;
+}
+
+
+int
+cilk_main (int argc, char* argv[])
+{
+  SimArgs theArgs;
+  struct timeval t1, t2;
+  unsigned long long build_time = 0;
+
+  theArgs = parse_arguments(argc, argv);
+
+  gettimeofday(&t1,0);  
+  Graph* graph = parse_graph(theArgs.inputname);
+  gettimeofday(&t2,0);
+  assert(graph);
+
+  build_time = todval(&t2)-todval(&t1);
+  if (theArgs.verbose) {
+    printf("Time to build graph (nodes = %u, edges = %d): %g s\n",
+	   graph->nodeCount(), 
+	   graph->edgeCount(),
+	   build_time / 1.0e6);
+  }
+
+  // Initialize extra data structures
+  int s;
+  int errors = 0;
+  int m = graph->nodeCount();  
+  unsigned int *distances = new unsigned int[m];
+  unsigned int *distverf = NULL;
+  unsigned long long t_total = 0;
+
+  purge_cache();
+  // Pick a starting node
+  //s = rand() % m;
+  s = 0;
+  
+  // Execute BFS
+  switch (theArgs.bfs_sel) {
+
+  case BFS_SERIAL:
+    cv.start();
+    graph->bfs_serial(s, distances);
+    cv.stop();
+    break;
+  case BFS_TWO_QUEUES:
+    cv.start();
+    graph->bfs_2queue(s, distances);      
+    cv.stop();
+    break;
+  case BFS_BAG_LIST:
+    cv.start();
+    graph->bfs_bag_list(s, distances);
+    cv.stop();
+    break;
+  case BFS_PARALLEL:
+    cv.start();
+    graph->bfs_parallel(s, distances);
+    cv.stop();    
+    break;
+  case BFS_PAR_OPT:
+    cv.start();
+    graph->bfs_parallel_opt(s, distances);
+    cv.stop();    
+    break;
+  case BFS_MEMTEST:
+    cv.start();
+    graph->bfs_memtest(s, distances, theArgs.extra_calls);
+    cv.stop();
+    break;
+  default:
+    fprintf(stderr, "ERROR: Invalid BFS type\n");
+    assert(0);
+    break;
+  }
+
+  t_total += cv.accumulated_milliseconds() * 1000;
+  if (theArgs.verbose) {
+    printf("Dumping Cilkview file %s\n",BFSTypeToName(theArgs.bfs_sel));
+  }	 
+  cv.dump(BFSTypeToName(theArgs.bfs_sel));
+
+  // Get official distances for checking
+  if (theArgs.check) {
+    if (debug) {
+      printf("Getting verification distances\n");
+    }
+    distverf = new unsigned int[m];
+    cilk_for (int i = 0; i < m; i++) {
+      distverf[i] = D_INFINITY;
+    }
+    graph->bfs_serial(s, distverf);
+  }
+  
+  // Verify correctness
+  if (theArgs.check) {
+    int num_e = check_distances(distances,
+				distverf,
+				m);
+    if (num_e > 0) {
+      fprintf(stderr, "ERROR: found %d errors when checking distance\n",
+	      num_e);
+    }
+    errors+= num_e;
+  }
+
+  // Print results if debugging
+  if (debug) {
+    for (int i = 0; i < m; i++)
+      printf("Distance to node %d: %d\n", i+1, distances[i]);
+  }
+
+  if (theArgs.check) {
+    if (errors != 0) {
+      fprintf(stderr, "Check distances FAILED\n\n\n");
+    }
+    else {
+      if (theArgs.verbose) {
+	printf("Check distances PASSED\n");
+      }
+    }
+    assert(errors == 0);
+  } 
+
+  // Print results
+  printf("Input file %s\n",
+	 theArgs.inputname.c_str());
+  if (theArgs.verbose) {
+    printf("P = %d, Nodes = %d, Edges = %d, Time (us) per edge = %g\n",
+	   theArgs.CurrentP,
+	   m,
+	   graph->edgeCount(),
+	   t_total / (1.0 * graph->edgeCount()));
+  }
+  printf("Algorithm %d (%s)",
+	 theArgs.bfs_sel,
+	 BFSTypeToName(theArgs.bfs_sel));
+
+  if (theArgs.bfs_sel == BFS_MEMTEST)
+    printf(", extra calls = %d",
+	   theArgs.extra_calls);
+
+  printf("\nTotal Time (s) = %g\n",
+	 t_total / 1.0e6);
+
+  delete graph;
+  return 0;
+}

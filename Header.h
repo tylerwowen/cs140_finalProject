@@ -9,11 +9,15 @@
 #ifndef finalx_Header_h
 #define finalx_Header_h
 
+#include<stdio.h>
+#include<iostream>
+
 struct graph { // A graph in compressed-adjacency-list (CSR) form
 	int nv;            // number of vertices
 	int ne;            // number of edges
 	int *nbr;          // array of neighbors of all vertices
 	int *firstnbr;     // index in nbr[] of first neighbor of each vtx
+	unsigned int *dist;// distance from source(level)
 };
 
 struct Node {

@@ -9,7 +9,10 @@
 #ifndef __finalx__pbfs__
 #define __finalx__pbfs__
 
-#include <stdio.h>
 #include "Header.h"
+
+void pbfs(graph *g, Node *v0);
+void process_layer(Bag* in_bag, Bag* out_bag, int d);
+
 
 #endif /* defined(__finalx__pbfs__) */

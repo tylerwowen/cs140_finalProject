@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "Header.h"
+#include "pbfs.h"
 
 int main (int argc, char* argv[]) {
 	graph *G;
@@ -51,7 +52,7 @@ int main (int argc, char* argv[]) {
 	free(levelsize);
 	free(parent);
 	
-	pbfsList(G, G->vertices[startvtx],&level, &nlevels, &levelsize, &parent);
+	pbfsList(G, G->vertices[startvtx], &level, &nlevels, &levelsize, &parent);
 	reached = 0;
 	for (i = 0; i < nlevels; i++) reached += levelsize[i];
 	printf("Parallel Breadth-first search from vertex %d reached %d levels and %d vertices.\n",

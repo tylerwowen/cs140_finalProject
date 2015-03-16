@@ -10,8 +10,8 @@
 #define __finalx__pbfs__
 
 #include "Header.h"
-#include <cilk/cilk.h>
-#include <cilk/reducer_list.h>
+//#include <cilk/cilk.h>
+//#include <cilk/reducer_list.h>
 
 void pbfsList(graph *G, Vertex *root, int **levelp, int *nlevelsp, int **levelsizep, int **parentp);
 

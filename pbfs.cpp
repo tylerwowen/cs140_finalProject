@@ -36,7 +36,7 @@ void pbfsList(graph *G, Vertex *root, int **levelp, int *nlevelsp, int **levelsi
 				}
 			}
 		}
-		reducer_list_append<Vertex*> nextlist;
+		cilk::reducer_list_append<Vertex*> nextlist;
 		cilk_for (int i = 0; i < frontier.size(); i++ ) {
 			//for( Vertex v in frontier[i].adjacency() )
 			for (int v = 0; v < vtxArr[i]->getNumOfAdjacency(); v++) {

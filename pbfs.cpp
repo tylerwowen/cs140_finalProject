@@ -7,6 +7,7 @@
 //
 
 #include "Header.h"
+#include "pbfs.h"
 #include <list>
 using namespace std;
 
@@ -25,7 +26,7 @@ void pbfsList(graph *G, Vertex *root, int **levelp, int *nlevelsp, int **levelsi
 	{
 		Vertex **vtxArr = new Vertex*[frontier.size()];
 		Vertex **arrPtr = vtxArr;
-		for (auto it = frontier.begin(); it != frontier.cend(); ++it){
+		for (std::list<Vertex*>::iterator it = frontier.begin(); it != frontier.end(); ++it){
 			*arrPtr++ = *it;
 		}
 		cilk_for( int i = 0; i < frontier.size(); ++i ) {

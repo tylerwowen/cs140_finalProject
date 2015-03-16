@@ -42,7 +42,7 @@ graph * graph_from_edge_list (int *tail, int* head, int nedges) {
 		if (tail[e] > maxv) maxv = tail[e];
 		if (head[e] > maxv) maxv = head[e];
 	}
-	G->nv = maxv;
+	G->nv = maxv+1;
 	G->nbr = (int *) calloc(G->ne, sizeof(int));
 	G->firstnbr = (int *) calloc(G->nv+1, sizeof(int));
 
@@ -86,7 +86,7 @@ void print_CSR_graph (graph *G) {
 	int vlimit = 20;
 	int elimit = 50;
 	int e,v;
-	printf("\nGraph has %d vertices and %d edges.\n",G->nv,G->ne);
+	printf("\nGraph has %d vertices and %d edges.\n",G->nv-1,G->ne);
 	printf("firstnbr =");
 	if (G->nv < vlimit) vlimit = G->nv;
 	for (v = 0; v <= vlimit; v++) printf(" %d",G->firstnbr[v]);
@@ -98,7 +98,7 @@ void print_CSR_graph (graph *G) {
 	if (G->ne > elimit) printf(" ...");
 	printf("\n\n");
 	
-	for (int i=1; i<=G->nv; i++) {
+	for (int i=1; i<=G->nv-1; i++) {
 		printf("vertex %d's neighbors: ", i);
 		for (int j=0; j<G->vertices[i]->getNumOfAdjacency(); j++) {
 			printf("%d ",G->vertices[i]->getAdjacency()[j]->getVertexNum());

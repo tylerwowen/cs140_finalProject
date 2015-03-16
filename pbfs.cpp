@@ -14,13 +14,19 @@ using namespace std;
 void pbfsList(graph *G, Vertex *root, int **levelp, int *nlevelsp, int **levelsizep, int **parentp){
 	
 	int *level, *levelsize;
-	level = *levelp = (int *) calloc(G->nv+1, sizeof(int));
+	level = *levelp = (int *) malloc((G->nv+1)*sizeof(int));
 	levelsize = *levelsizep = (int *) calloc(G->nv+1, sizeof(int));
 	int currentLevel = 1;
 	
 	list<Vertex*> frontier;
 	frontier.push_front(root);
 	int* parent = new int[G -> nv + 1];
+	for ( int i=0; i<G->nv; i++) {
+		parent[i] = -1;
+		level[i] = -1;
+	}
+	level[root->getVertexNum()] = 0;
+	levelsize[0] = 1;
 	*parentp = parent;
 	while( !frontier.empty() )
 	{

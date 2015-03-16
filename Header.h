@@ -12,6 +12,7 @@
 #include<stdio.h>
 #include<iostream>
 #include "vertex.h"
+#include "pbfs.h"
 
 struct graph { // A graph in compressed-adjacency-list (CSR) form
 	int nv;            // number of vertices
@@ -30,5 +31,6 @@ struct Node {
 int read_edge_list (int **tailp, int **headp);
 graph * graph_from_edge_list (int *tail, int* head, int nedges);
 void print_CSR_graph (graph *G);
+void bfs (int s, graph *G, int **levelp, int *nlevelsp, int **levelsizep, int **parentp);
 
 #endif

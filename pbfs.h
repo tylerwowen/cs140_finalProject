@@ -10,9 +10,10 @@
 #define __finalx__pbfs__
 
 #include "Header.h"
+#include <cilk/cilk.h>
+#include <cilk/reducer_list.h>
 
-void pbfs(graph *g, Node *v0);
-//void process_layer(Bag* in_bag, Bag* out_bag, int d);
-
+void pbfsList(graph *G, Vertex *root, int **levelp, int *nlevelsp, int **levelsizep, int **parentp);
 
 #endif /* defined(__finalx__pbfs__) */
+

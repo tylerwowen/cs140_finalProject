@@ -33,11 +33,28 @@ int main (int argc, char* argv[]) {
 	print_CSR_graph (G);
 
 	printf("Starting vertex for BFS is %d.\n\n",startvtx);
-	//bfs (startvtx, G, &level, &nlevels, &levelsize, &parent);
-
+	bfs (startvtx, G, &level, &nlevels, &levelsize, &parent);
+	
+	
 	reached = 0;
 	for (i = 0; i < nlevels; i++) reached += levelsize[i];
 	printf("Breadth-first search from vertex %d reached %d levels and %d vertices.\n",
+		   startvtx, nlevels, reached);
+	for (i = 0; i < nlevels; i++) printf("level %d vertices: %d\n", i, levelsize[i]);
+	if (G->nv < 20) {
+		printf("\n  vertex parent  level\n");
+		for (v = 0; v < G->nv; v++) printf("%6d%7d%7d\n", v, parent[v], level[v]);
+	}
+	printf("\n");
+	
+	free(level);
+	free(levelsize);
+	free(parent);
+	
+	pbfsList(G, G->vertices[startvtx],&level, &nlevels, &levelsize, &parent);
+	reached = 0;
+	for (i = 0; i < nlevels; i++) reached += levelsize[i];
+	printf("Parallel Breadth-first search from vertex %d reached %d levels and %d vertices.\n",
 		   startvtx, nlevels, reached);
 	for (i = 0; i < nlevels; i++) printf("level %d vertices: %d\n", i, levelsize[i]);
 	if (G->nv < 20) {

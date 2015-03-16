@@ -12,7 +12,7 @@
 #include "Header.h"
 
 void pbfs(graph *g, Node *v0);
-void process_layer(Bag* in_bag, Bag* out_bag, int d);
+//void process_layer(Bag* in_bag, Bag* out_bag, int d);
 
 
 #endif /* defined(__finalx__pbfs__) */

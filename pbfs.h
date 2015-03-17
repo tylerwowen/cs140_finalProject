@@ -12,6 +12,7 @@
 #include "Header.h"
 #include <cilk/cilk.h>
 #include <cilk/reducer_list.h>
+#include <cilk/reducer_opadd.h>
 
 void pbfsList(graph *G, Vertex *root, int **levelp, int *nlevelsp, int **levelsizep, int **parentp);
 

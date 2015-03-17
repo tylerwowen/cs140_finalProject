@@ -37,26 +37,31 @@ void pbfsList(graph *G, Vertex *root, int **levelp, int *nlevelsp, int **levelsi
 		for (std::list<Vertex*>::iterator it = frontier.begin(); it != frontier.end(); ++it){
 			*arrPtr++ = *it;
 		}
-		cilk_for( int i = 0; i < frontier.size(); ++i ) {
+		cilk_for( int i = 0; i < frontier.size(); i++ ) {
 			for ( int v = 0; v < vtxArr[i]->getNumOfAdjacency(); v++ ) {
 				if( !vtxArr[i]->getAdjacency()[v]->isVisited()) {
-					parent[vtxArr[i]->getAdjacency()[v]->getVertexNum()] = vtxArr[i]->getVertexNum(); // ?
+					parent[vtxArr[i]->getAdjacency()[v]->getVertexNum()] = vtxArr[i]->getVertexNum();
+					
 				}
 			}
 		}
 		cilk::reducer_list_append<Vertex*> nextlist;
+		cilk::reducer_opadd<int> size(0);
 		cilk_for (int i = 0; i < frontier.size(); i++ ) {
 			//for( Vertex v in frontier[i].adjacency() )
 			for (int v = 0; v < vtxArr[i]->getNumOfAdjacency(); v++) {
-				if (parent[vtxArr[i]->getAdjacency()[v]->getVertexNum()] == vtxArr[i]->getVertexNum()) {
+				if (parent[vtxArr[i]->getAdjacency()[v]->getVertexNum()] == vtxArr[i]->getVertexNum()
+				   && !vtxArr[i]->getAdjacency()[v]->isVisited()
+				   ) {
 					nextlist.push_back(vtxArr[i] -> getAdjacency()[v]);
 					vtxArr[i] -> getAdjacency()[v]->setVisited();
 					
-					levelsize[currentLevel]++;
+					size++;
 					level[vtxArr[i]->getAdjacency()[v]->getVertexNum()] = currentLevel;
 				}
 			}
 		}
+		levelsize[currentLevel] = size.get_value();
 		frontier.clear();
 		frontier = nextlist.get_value();
 		delete[] vtxArr;

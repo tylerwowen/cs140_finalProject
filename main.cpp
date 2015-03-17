@@ -10,6 +10,9 @@
 #include <stdlib.h>
 #include "Header.h"
 #include "pbfs.h"
+#include <sys/time.h>
+
+double elapsed_seconds();
 
 int main (int argc, char* argv[]) {
 	graph *G;
@@ -34,8 +37,10 @@ int main (int argc, char* argv[]) {
 	print_CSR_graph (G);
 
 	printf("Starting vertex for BFS is %d.\n\n",startvtx);
+	double time = elapsed_seconds();
 	bfs (startvtx, G, &level, &nlevels, &levelsize, &parent);
-	
+	time = elapsed_seconds()-time;
+	printf("Sequential time is %fs\n",time);
 	
 	reached = 0;
 	for (i = 0; i < nlevels; i++) reached += levelsize[i];
@@ -44,7 +49,7 @@ int main (int argc, char* argv[]) {
 	for (i = 0; i < nlevels; i++) printf("level %d vertices: %d\n", i, levelsize[i]);
 	if (G->nv < 20) {
 		printf("\n  vertex parent  level\n");
-		for (v = 0; v < G->nv; v++) printf("%6d%7d%7d\n", v, parent[v], level[v]);
+		for (v = 1; v <= G->nv; v++) printf("%6d%7d%7d\n", v, parent[v], level[v]);
 	}
 	printf("\n");
 	
@@ -52,7 +57,11 @@ int main (int argc, char* argv[]) {
 	free(levelsize);
 	free(parent);
 	
+	time = elapsed_seconds();
 	pbfsList(G, G->vertices[startvtx], &level, &nlevels, &levelsize, &parent);
+	time = elapsed_seconds()-time;
+	printf("Parallel time is %fs\n",time);
+	
 	reached = 0;
 	for (i = 0; i < nlevels; i++) reached += levelsize[i];
 	printf("Parallel Breadth-first search from vertex %d reached %d levels and %d vertices.\n",
@@ -60,7 +69,7 @@ int main (int argc, char* argv[]) {
 	for (i = 0; i < nlevels; i++) printf("level %d vertices: %d\n", i, levelsize[i]);
 	if (G->nv < 20) {
 		printf("\n  vertex parent  level\n");
-		for (v = 0; v < G->nv; v++) printf("%6d%7d%7d\n", v, parent[v], level[v]);
+		for (v = 1; v <= G->nv; v++) printf("%6d%7d%7d\n", v, parent[v], level[v]);
 	}
 	printf("\n");
 }

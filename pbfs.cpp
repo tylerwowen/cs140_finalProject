@@ -19,6 +19,7 @@ void pbfsList(graph *G, Vertex *root, int **levelp, int *nlevelsp, int **levelsi
 	int currentLevel = 1;
 	
 	list<Vertex*> frontier;
+	//cilk::reducer_list_append<Vertex*> nextlist;
 	frontier.push_front(root);
 	int* parent = new int[G -> nv + 1];
 	for ( int i=0; i<G->nv; i++) {
@@ -28,6 +29,7 @@ void pbfsList(graph *G, Vertex *root, int **levelp, int *nlevelsp, int **levelsi
 	level[root->getVertexNum()] = 0;
 	levelsize[0] = 1;
 	*parentp = parent;
+	root->setVisited();
 	while( !frontier.empty() )
 	{
 		Vertex **vtxArr = new Vertex*[frontier.size()];
@@ -55,6 +57,7 @@ void pbfsList(graph *G, Vertex *root, int **levelp, int *nlevelsp, int **levelsi
 				}
 			}
 		}
+		frontier.clear();
 		frontier = nextlist.get_value();
 		delete[] vtxArr;
 		

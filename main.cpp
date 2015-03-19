@@ -17,27 +17,35 @@ double elapsed_seconds();
 int main (int argc, char* argv[]) {
 	graph *G;
 	int *level, *levelsize, *parent;
-	int *tail, *head;
+	unsigned int *tail=NULL, *head=NULL;
 	int nedges;
 	int nlevels;
 	int startvtx;
 	int i, v, reached;
+	double time;
+	int scale;
 
-	if (argc == 2) {
+	if (argc == 3) {
 		startvtx = atoi (argv[1]);
-	} else {
+		scale = atoi (argv[2]);
+		nedges = generateEdges(scale, 16, &head, &tail);
+	} 
+	else if( argc == 2){
+		startvtx = atoi (argv[1]);
+		nedges = read_edge_list (&tail, &head);
+	}
+	else {
 		printf("usage:   bfstest <startvtx> < <edgelistfile>\n");
 		printf("example: cat sample.txt | ./bfstest 1\n");
 		exit(1);
 	}
-	nedges = read_edge_list (&tail, &head);
 	G = graph_from_edge_list (tail, head, nedges);
 	free(tail);
 	free(head);
 	print_CSR_graph (G);
 
 	printf("Starting vertex for BFS is %d.\n\n",startvtx);
-	double time = elapsed_seconds();
+	time = elapsed_seconds();
 	bfs (startvtx, G, &level, &nlevels, &levelsize, &parent);
 	time = elapsed_seconds()-time;
 	printf("Sequential time is %fs\n",time);

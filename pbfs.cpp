@@ -10,7 +10,7 @@
 #include "pbfs.h"
 #include <list>
 using namespace std;
-
+#define coarseness 1000
 void pbfsList(graph *G, Vertex *root, int **levelp, int *nlevelsp, int **levelsizep, int **parentp){
 	
 	int *level, *levelsize;
@@ -37,7 +37,25 @@ void pbfsList(graph *G, Vertex *root, int **levelp, int *nlevelsp, int **levelsi
 		for (std::list<Vertex*>::iterator it = frontier.begin(); it != frontier.end(); ++it){
 			*arrPtr++ = *it;
 		}
-		cilk_for( int i = 0; i < frontier.size(); i++ ) {
+		/*
+		cilk_for( int i = 0; i < frontier.size()/coarseness; i++ ) {
+			for ( int j = 0; j < coarseness; j++){
+			for ( int v = 0; v < vtxArr[i*coarseness+j]->getNumOfAdjacency(); v++ ) {
+				if( !vtxArr[i*coarseness+j]->getAdjacency()[v]->isVisited()) {
+					parent[vtxArr[i*coarseness+j]->getAdjacency()[v]->getVertexNum()] = vtxArr[i*coarseness+j]->getVertexNum();
+					
+				}
+			}}
+		}
+		for( int i = frontier.size()-coarseness; i < frontier.size(); i++ ){
+			for ( int v = 0; v < vtxArr[i]->getNumOfAdjacency(); v++ ) {
+				if( !vtxArr[i]->getAdjacency()[v]->isVisited()) {
+					parent[vtxArr[i]->getAdjacency()[v]->getVertexNum()] = vtxArr[i]->getVertexNum();
+					
+				}
+			}
+		}*/
+		cilk_for( int i = 0; i < frontier.size(); i++ ){
 			for ( int v = 0; v < vtxArr[i]->getNumOfAdjacency(); v++ ) {
 				if( !vtxArr[i]->getAdjacency()[v]->isVisited()) {
 					parent[vtxArr[i]->getAdjacency()[v]->getVertexNum()] = vtxArr[i]->getVertexNum();
@@ -46,7 +64,7 @@ void pbfsList(graph *G, Vertex *root, int **levelp, int *nlevelsp, int **levelsi
 			}
 		}
 		cilk::reducer_list_append<Vertex*> nextlist;
-		cilk::reducer_opadd<int> size(0);
+//		cilk::reducer_opadd<int> size(0);
 		cilk_for (int i = 0; i < frontier.size(); i++ ) {
 			//for( Vertex v in frontier[i].adjacency() )
 			for (int v = 0; v < vtxArr[i]->getNumOfAdjacency(); v++) {
@@ -56,14 +74,15 @@ void pbfsList(graph *G, Vertex *root, int **levelp, int *nlevelsp, int **levelsi
 					nextlist.push_back(vtxArr[i] -> getAdjacency()[v]);
 					vtxArr[i] -> getAdjacency()[v]->setVisited();
 					
-					size++;
+					//size++;
 					level[vtxArr[i]->getAdjacency()[v]->getVertexNum()] = currentLevel;
 				}
 			}
 		}
-		levelsize[currentLevel] = size.get_value();
+		//levelsize[currentLevel] = size.get_value();
 		frontier.clear();
 		frontier = nextlist.get_value();
+		levelsize[currentLevel] = frontier.size();
 		delete[] vtxArr;
 		
 		currentLevel++;

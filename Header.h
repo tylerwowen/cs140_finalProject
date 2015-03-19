@@ -27,9 +27,9 @@ struct Node {
 	Node* right_;
 };
 
-int read_edge_list (int **tailp, int **headp);
-graph * graph_from_edge_list (int *tail, int* head, int nedges);
+int read_edge_list (unsigned int **tailp, unsigned int **headp);
+graph * graph_from_edge_list (unsigned int *tail, unsigned int* head, int nedges);
 void print_CSR_graph (graph *G);
 void bfs (int s, graph *G, int **levelp, int *nlevelsp, int **levelsizep, int **parentp);
-
+int generateEdges(int SCALE, int edgefactor, unsigned int **head, unsigned int **tail);
 #endif

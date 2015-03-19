@@ -10,27 +10,27 @@
 #include <stdlib.h>
 #include "Header.h"
 
-int read_edge_list (int **tailp, int **headp) {
-	int max_edges = 1000000;
-	int nedges, nr, t, h;
-	*tailp = (int *) calloc(max_edges, sizeof(int));
-	*headp = (int *) calloc(max_edges, sizeof(int));
+int read_edge_list (unsigned int **tailp, unsigned int **headp) {
+	unsigned int max_edges = 1000000;
+	unsigned int nedges, nr, t, h,jk;
+	*tailp = (unsigned int *) calloc(max_edges, sizeof(unsigned int));
+	*headp = (unsigned int *) calloc(max_edges, sizeof(unsigned int));
 	nedges = 0;
-	nr = scanf("%i %i",&t,&h);
-	while (nr == 2) {
+	nr = scanf("%i %i %i",&t,&h,&jk);
+	while (nr == 3) {
 		if (nedges >= max_edges) {
 			printf("Limit of %d edges exceeded.\n",max_edges);
 			exit(1);
 		}
 		(*tailp)[nedges] = t;
 		(*headp)[nedges++] = h;
-		nr = scanf("%i %i",&t,&h);
+		nr = scanf("%i %i %i",&t,&h, &jk);
 	}
 	return nedges;
 }
 
 
-graph * graph_from_edge_list (int *tail, int* head, int nedges) {
+graph * graph_from_edge_list (unsigned int *tail, unsigned int* head, int nedges) {
 	graph *G;
 	int i, e, v, maxv;
 	G = (graph *) calloc(1, sizeof(graph));
@@ -71,7 +71,6 @@ graph * graph_from_edge_list (int *tail, int* head, int nedges) {
 	for (v = 1; v < G->nv; v++) {
 		for (i = G->firstnbr[v]; i < G->firstnbr[v+1]; i++) {
 			e = G->nbr[i];
-			if (i-G->firstnbr[v]==406) printf("e=%d, i=%d,v=%d\n",e,i,v);
 			G->vertices[v]->addNeighbor(G->vertices[e]);
 		}
 	}
@@ -151,4 +150,82 @@ void bfs (int s, graph *G, int **levelp, int *nlevelsp,
 	}
 	*nlevelsp = thislevel;
 	free(queue);
+}
+
+#define getRandom() (drand48())
+
+void randPerm(int n, unsigned int perm[])
+{
+  int i, j, t;
+
+  for(i=0; i<n; i++)
+    perm[i] = i;
+
+  for(i=0; i<n; i++) {
+    j = rand()%(n-i)+i;
+    t = perm[j];
+    perm[j] = perm[i];
+    perm[i] = t;
+  }
+}
+
+int generateEdges(int SCALE, int edgefactor, unsigned int **head, unsigned int **tail){
+   
+  unsigned int N =  (((unsigned int)1) << SCALE); // Set the number of vertices
+  
+  unsigned int M = (edgefactor * N); // Set the number of edges
+
+  double const A = 0.57;
+  double const B = 0.19;
+  double const C = 0.19;
+  
+
+
+  double const ab = (A+B); 
+  double const c_norm = C / (1 - ab);
+  double const a_norm = A / ab;
+
+  unsigned int ib;
+  unsigned int randNum;
+
+  // Set the seeds for the drand48 and the rand function
+  //  srand48((long int)time(NULL));
+  //srand((long int)time(NULL));
+  srand(928);
+  int ii_bit, jj_bit;
+
+	*head = (unsigned int *) malloc (M*sizeof(unsigned int));
+	*tail = (unsigned int *) malloc (M*sizeof(unsigned int));
+  unsigned int j;
+  for(ib = 1; ib <= SCALE; ib++) {
+    
+    for(j = 0; j < M; j++) {
+      ii_bit = (getRandom() > ab);
+      jj_bit = (getRandom() > (c_norm * ii_bit + a_norm * !(ii_bit)));
+      (*tail)[j] += ((unsigned int)1 << (ib - 1)) * ii_bit;
+      (*head)[j] += ((unsigned int)1 << (ib - 1)) * jj_bit;
+    }
+  }
+  
+  unsigned int * p = (unsigned int *) malloc(N*sizeof(unsigned int)); 
+  if(p == NULL) {
+    printf("Malloc failed for permutation array p\n");
+    exit(-1);
+  }
+  
+  // Permute the vertices
+  randPerm(N,p);
+
+  for(j = 0; j < M; j++) {
+    unsigned int index = (*tail)[j];
+    (*tail)[j] = p[index];
+    index = (*head)[j];
+    (*head)[j] = p[index];
+  }
+
+  free(p);
+  
+
+  
+  return M;
 }

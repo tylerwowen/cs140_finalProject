@@ -17,17 +17,16 @@ private:
 	bool visited;
 	unsigned int vertexNum;
 	unsigned int numOfAdjacency;
-	unsigned int currentNumOfAdjacency;
 public:
 	Vertex();
 	Vertex(unsigned int vertexNum, unsigned int numOfAdjacency);
 	~Vertex();
 	bool isVisited();
-	Vertex** getAdjacency();
+	Vertex* getNthAdjacency(int index);
 	unsigned int getNumOfAdjacency();
 	unsigned int getVertexNum();
 	void setVisited();
-	void addNeighbor(Vertex *neighbor);
+	void addNeighbor(Vertex *neighbor, int loc);
 };
 
 #endif /* defined(__finalx__vertex__) */

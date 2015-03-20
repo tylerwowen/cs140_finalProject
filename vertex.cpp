@@ -14,7 +14,6 @@ Vertex::Vertex(){
 }
 
 Vertex::Vertex(unsigned int vertexNum, unsigned int num){
-	currentNumOfAdjacency = 0;
 	this->vertexNum = vertexNum;
 	numOfAdjacency = num;
 	visited = false;
@@ -33,8 +32,8 @@ void Vertex::setVisited(){
 	visited = true;
 }
 
-void Vertex::addNeighbor(Vertex *neighbor){
-	adjacency[currentNumOfAdjacency++] = neighbor;
+void Vertex::addNeighbor(Vertex *neighbor, int loc){
+	adjacency[loc] = neighbor;
 }
 
 unsigned int Vertex::getNumOfAdjacency(){
@@ -45,6 +44,6 @@ unsigned int Vertex::getVertexNum(){
 	return vertexNum;
 }
 
-Vertex** Vertex::getAdjacency(){
-	return adjacency;
+Vertex* Vertex::getNthAdjacency(int index){
+	return adjacency[index];
 }

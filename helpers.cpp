@@ -69,14 +69,14 @@ graph * graph_from_edge_list (unsigned int *tail, unsigned int* head, int nedges
 	}
 	G->vertices[v] = new Vertex(v, G->ne - G->firstnbr[v]);
 	for (v = 0; v < G->nv - 1; v++) {
+		e = 0;
 		for (i = G->firstnbr[v]; i < G->firstnbr[v+1]; i++) {
-			e = G->nbr[i];
-			G->vertices[v]->addNeighbor(G->vertices[e]);
+			G->vertices[v]->addNeighbor(G->vertices[G->nbr[i]], e++);
 		}
 	}
+	e = 0;
 	for (i = G->firstnbr[v]; i < G->ne; i++) {
-		e = G->nbr[i];
-		G->vertices[v]->addNeighbor(G->vertices[e]);
+		G->vertices[v]->addNeighbor(G->vertices[G->nbr[i]], e++);
 	}
 	return G;
 }
@@ -101,7 +101,7 @@ void print_CSR_graph (graph *G) {
 	for (int i=0; i<G->nv; i++) {
 		printf("vertex %d's neighbors: ", i);
 		for (int j=0; j<G->vertices[i]->getNumOfAdjacency(); j++) {
-			printf("%d ",G->vertices[i]->getAdjacency()[j]->getVertexNum());
+			printf("%d ",G->vertices[i]->getNthAdjacency(j)->getVertexNum());
 		}
 		printf("\n");
 	}

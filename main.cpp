@@ -28,7 +28,7 @@ int main (int argc, char* argv[]) {
 	if (argc == 3) {
 		startvtx = atoi (argv[1]);
 		scale = atoi (argv[2]);
-		nedges = generateEdges(scale, 16, &head, &tail);
+		nedges = generateEdges(scale, 36, &head, &tail);
 	} 
 	else if( argc == 2){
 		startvtx = atoi (argv[1]);

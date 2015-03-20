@@ -57,7 +57,7 @@ int main (int argc, char* argv[]) {
 	for (i = 0; i < nlevels; i++) printf("level %d vertices: %d\n", i, levelsize[i]);
 	if (G->nv < 20) {
 		printf("\n  vertex parent  level\n");
-		for (v = 1; v <= G->nv; v++) printf("%6d%7d%7d\n", v, parent[v], level[v]);
+		for (v = 0; v < G->nv; v++) printf("%6d%7d%7d\n", v, parent[v], level[v]);
 	}
 	printf("\n");
 	
@@ -77,7 +77,7 @@ int main (int argc, char* argv[]) {
 	for (i = 0; i < nlevels; i++) printf("level %d vertices: %d\n", i, levelsize[i]);
 	if (G->nv < 20) {
 		printf("\n  vertex parent  level\n");
-		for (v = 1; v <= G->nv; v++) printf("%6d%7d%7d\n", v, parent[v], level[v]);
+		for (v = 0; v < G->nv; v++) printf("%6d%7d%7d\n", v, parent[v], level[v]);
 	}
 	printf("\n");
 }

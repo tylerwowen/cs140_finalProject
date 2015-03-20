@@ -12,19 +12,19 @@
 
 int read_edge_list (unsigned int **tailp, unsigned int **headp) {
 	unsigned int max_edges = 1000000;
-	unsigned int nedges, nr, t, h,jk;
+	unsigned int nedges, nr, t, h;
 	*tailp = (unsigned int *) calloc(max_edges, sizeof(unsigned int));
 	*headp = (unsigned int *) calloc(max_edges, sizeof(unsigned int));
 	nedges = 0;
-	nr = scanf("%i %i %i",&t,&h,&jk);
-	while (nr == 3) {
+	nr = scanf("%u %u",&t,&h);
+	while (nr == 2) {
 		if (nedges >= max_edges) {
 			printf("Limit of %d edges exceeded.\n",max_edges);
 			exit(1);
 		}
 		(*tailp)[nedges] = t;
 		(*headp)[nedges++] = h;
-		nr = scanf("%i %i %i",&t,&h, &jk);
+		nr = scanf("%u %u",&t,&h);
 	}
 	return nedges;
 }
@@ -42,9 +42,9 @@ graph * graph_from_edge_list (unsigned int *tail, unsigned int* head, int nedges
 		if (tail[e] > maxv) maxv = tail[e];
 		if (head[e] > maxv) maxv = head[e];
 	}
-	G->nv = maxv;
+	G->nv = maxv+1;
 	G->nbr = (int *) calloc(G->ne, sizeof(int));
-	G->firstnbr = (int *) calloc(G->nv+2, sizeof(int));
+	G->firstnbr = (int *) calloc(G->nv+1, sizeof(int));
 
 	// count neighbors of vertex v in firstnbr[v+1],
 	for (e = 0; e < G->ne; e++) G->firstnbr[tail[e]+1]++;
@@ -64,11 +64,11 @@ graph * graph_from_edge_list (unsigned int *tail, unsigned int* head, int nedges
 	
 	// initialize vertices
 	G->vertices = new Vertex*[G->nv+1];
-	for (v = 1; v < G->nv; v++) {
+	for (v = 0; v < G->nv - 1; v++) {
 		G->vertices[v] = new Vertex(v, G->firstnbr[v+1] - G->firstnbr[v]);
 	}
 	G->vertices[v] = new Vertex(v, G->ne - G->firstnbr[v]);
-	for (v = 1; v < G->nv; v++) {
+	for (v = 0; v < G->nv - 1; v++) {
 		for (i = G->firstnbr[v]; i < G->firstnbr[v+1]; i++) {
 			e = G->nbr[i];
 			G->vertices[v]->addNeighbor(G->vertices[e]);
@@ -89,7 +89,7 @@ void print_CSR_graph (graph *G) {
 	printf("\nGraph has %d vertices and %d edges.\n",G->nv,G->ne);
 	printf("firstnbr =");
 	if (G->nv < vlimit) vlimit = G->nv;
-	for (v = 1; v <= vlimit; v++) printf(" %d",G->firstnbr[v]);
+	for (v = 0; v <= vlimit; v++) printf(" %d",G->firstnbr[v]);
 	if (G->nv > vlimit) printf(" ...");
 	printf("\n");
 	printf("nbr =");
@@ -98,7 +98,7 @@ void print_CSR_graph (graph *G) {
 	if (G->ne > elimit) printf(" ...");
 	printf("\n\n");
 #if DEBUG==1	
-	for (int i=1; i<=G->nv; i++) {
+	for (int i=0; i<G->nv; i++) {
 		printf("vertex %d's neighbors: ", i);
 		for (int j=0; j<G->vertices[i]->getNumOfAdjacency(); j++) {
 			printf("%d ",G->vertices[i]->getAdjacency()[j]->getVertexNum());
@@ -114,15 +114,15 @@ void bfs (int s, graph *G, int **levelp, int *nlevelsp,
 	int thislevel;
 	int *queue, back, front;
 	int i, v, w, e;
-	level = *levelp = (int *) calloc(G->nv+1, sizeof(int));
-	levelsize = *levelsizep = (int *) calloc(G->nv+1, sizeof(int));
-	parent = *parentp = (int *) calloc(G->nv+1, sizeof(int));
-	queue = (int *) calloc(G->nv+1, sizeof(int));
+	level = *levelp = (int *) calloc(G->nv, sizeof(int));
+	levelsize = *levelsizep = (int *) calloc(G->nv, sizeof(int));
+	parent = *parentp = (int *) calloc(G->nv, sizeof(int));
+	queue = (int *) calloc(G->nv, sizeof(int));
 	
 	// initially, queue is empty, all levels and parents are -1
 	back = 0;   // position next element will be added to queue
 	front = 0;  // position next element will be removed from queue
-	for (v = 0; v <= G->nv; v++) level[v] = -1;
+	for (v = 0; v < G->nv; v++) level[v] = -1;
 	for (v = 0; v < G->nv; v++) parent[v] = -1;
 	
 	// assign the starting vertex level 0 and put it on the queue to explore
@@ -133,7 +133,7 @@ void bfs (int s, graph *G, int **levelp, int *nlevelsp,
 	
 	// loop over levels, then over vertices at this level, then over neighbors
 	while (levelsize[thislevel] > 0) {
-		//levelsize[thislevel+1] = 0;
+		levelsize[thislevel+1] = 0;
 		for (i = 0; i < levelsize[thislevel]; i++) {
 			v = queue[front++];       // v is the current vertex to explore from
 			for (e = G->firstnbr[v]; e < G->firstnbr[v+1]; e++) {

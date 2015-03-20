@@ -25,10 +25,11 @@ int main (int argc, char* argv[]) {
 	double time;
 	int scale;
 
-	if (argc == 3) {
+	if (argc == 4) {
 		startvtx = atoi (argv[1]);
 		scale = atoi (argv[2]);
-		nedges = generateEdges(scale, 36, &head, &tail);
+		int edgefactor = atoi (argv[3]);
+		nedges = generateEdges(scale, edgefactor, &head, &tail);
 	} 
 	else if( argc == 2){
 		startvtx = atoi (argv[1]);
